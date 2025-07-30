@@ -26,7 +26,10 @@ recognizer = sr.Recognizer()
 mic = sr.Microphone(device_index=MIC_INDEX)
 
 # Initialize LLM
-llm = ChatOllama(model="qwen3:1.7b", reasoning=False)
+# llm = ChatOllama(model="qwen3:1.7b", reasoning=False)
+
+# model that supports italian and is available on ollama
+llm = ChatOllama(model="llama3.2:1b", reasoning=False)
 
 # llm = ChatOpenAI(model="gpt-4o-mini", api_key=api_key, organization=org_id) for openai
 
@@ -34,8 +37,15 @@ llm = ChatOllama(model="qwen3:1.7b", reasoning=False)
 tools = [get_time]
 
 # Tool-calling prompt
+# prompt = ChatPromptTemplate.from_messages([
+#     ("system", "You are Jarvis, an intelligent, conversational AI assistant. Your goal is to be helpful, friendly, and informative. You can respond in natural, human-like language and use tools when needed to answer questions more accurately. Always explain your reasoning simply when appropriate, and keep your responses conversational and concise."),
+#     ("human", "{input}"),
+#     ("placeholder", "{agent_scratchpad}")
+# ])
+
+# italian version of the prompt
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are Jarvis, an intelligent, conversational AI assistant. Your goal is to be helpful, friendly, and informative. You can respond in natural, human-like language and use tools when needed to answer questions more accurately. Always explain your reasoning simply when appropriate, and keep your responses conversational and concise."),
+    ("system", "Tu sei Jarvis, un assistente AI intelligente e conversazionale. Il tuo obiettivo è essere utile, amichevole e informativo. Puoi rispondere con un linguaggio naturale, simile a quello umano, e utilizzare strumenti quando necessario per rispondere alle domande in modo più accurato. Spiega sempre il tuo ragionamento in modo semplice quando è il caso e mantieni le tue risposte colloquiali e concise."),
     ("human", "{input}"),
     ("placeholder", "{agent_scratchpad}")
 ])
@@ -58,7 +68,7 @@ def speak_text(text: str):
         engine.runAndWait()
         time.sleep(0.3)
     except Exception as e:
-        logging.error(f"❌ TTS failed: {e}")
+        logging.error(f"TTS failed: {e}")
 
 # Main interaction loop
 def write():
@@ -71,50 +81,50 @@ def write():
             while True:
                 try:
                     if not conversation_mode:
-                        logging.info("🎤 Listening for wake word...")
+                        logging.info("Listening for wake word...")
                         audio = recognizer.listen(source, timeout=10)
                         transcript = recognizer.recognize_google(audio)
-                        logging.info(f"🗣 Heard: {transcript}")
+                        logging.info(f"Heard: {transcript}")
 
                         if TRIGGER_WORD.lower() in transcript.lower():
-                            logging.info(f"🗣 Triggered by: {transcript}")
+                            logging.info(f"Triggered by: {transcript}")
                             speak_text("Yes sir?")
                             conversation_mode = True
                             last_interaction_time = time.time()
                         else:
                             logging.debug("Wake word not detected, continuing...")
                     else:
-                        logging.info("🎤 Listening for next command...")
+                        logging.info("Listening for next command...")
                         audio = recognizer.listen(source, timeout=10)
                         command = recognizer.recognize_google(audio)
-                        logging.info(f"📥 Command: {command}")
+                        logging.info(f"Command: {command}")
 
-                        logging.info("🤖 Sending command to agent...")
+                        logging.info("Sending command to agent...")
                         response = executor.invoke({"input": command})
                         content = response["output"]
-                        logging.info(f"✅ Agent responded: {content}")
+                        logging.info(f"Agent responded: {content}")
 
                         print("Jarvis:", content)
                         speak_text(content)
                         last_interaction_time = time.time()
 
                         if time.time() - last_interaction_time > CONVERSATION_TIMEOUT:
-                            logging.info("⌛ Timeout: Returning to wake word mode.")
+                            logging.info("Timeout: Returning to wake word mode.")
                             conversation_mode = False
 
                 except sr.WaitTimeoutError:
-                    logging.warning("⚠️ Timeout waiting for audio.")
+                    logging.warning("Timeout waiting for audio.")
                     if conversation_mode and time.time() - last_interaction_time > CONVERSATION_TIMEOUT:
-                        logging.info("⌛ No input in conversation mode. Returning to wake word mode.")
+                        logging.info("No input in conversation mode. Returning to wake word mode.")
                         conversation_mode = False
                 except sr.UnknownValueError:
-                    logging.warning("⚠️ Could not understand audio.")
+                    logging.warning("Could not understand audio.")
                 except Exception as e:
-                    logging.error(f"❌ Error during recognition or tool call: {e}")
+                    logging.error(f"Error during recognition or tool call: {e}")
                     time.sleep(1)
 
     except Exception as e:
-        logging.critical(f"❌ Critical error in main loop: {e}")
+        logging.critical(f"Critical error in main loop: {e}")
 
 if __name__ == "__main__":
     write()
