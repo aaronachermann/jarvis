@@ -14,6 +14,7 @@
 - 💾 Conversation memory plugin (can be disabled)
 - 📆 Calendar and Apple Calendar plugins plus social, vision and learning modules
 - 🔊 Text-to-speech responses via `pyttsx3`
+- 🎞 Animated concentric-ring HUD using `curses` while Jarvis speaks
 - 🌍 Example tool: Get the current time in a given city
 - ⛅ Weather reports, web search and more tools
 - 📍 Enhanced context with location and device activity
@@ -41,6 +42,8 @@
    - Records the user’s spoken command
    - Passes the command to the LLM, which may invoke tools
    - Responds using `pyttsx3` text-to-speech (with optional custom voice)
+   - Displays an animated HUD using `curses` while speaking
+
    - Conversation history can be exported to `conversation_export.txt`
 
 4. **Timeout**
