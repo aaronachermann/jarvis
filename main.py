@@ -2,14 +2,19 @@ import os
 import logging
 import time
 import pyttsx3
+import threading
+import curses
 from dotenv import load_dotenv
 import speech_recognition as sr
-from langchain_ollama import ChatOllama, OllamaLLM
-# from langchain_openai import ChatOpenAI # if you want to use openai
-from langchain_core.messages import HumanMessage
+from langchain_ollama import ChatOllama
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
-from tools.time import get_time 
+from tools import load_tools
+from config import ENABLED_TOOLS, FEATURE_FLAGS
+from plugins import setup_plugins
+from plugins.memory import memory
+from plugins.learning import learning
+from hud import RingHUD
 
 load_dotenv()
 
@@ -33,8 +38,8 @@ llm = ChatOllama(model="llama3.2:1b", reasoning=False)
 
 # llm = ChatOpenAI(model="gpt-4o-mini", api_key=api_key, organization=org_id) for openai
 
-# Tool list
-tools = [get_time]
+# Load all available tools dynamically based on configuration
+tools = load_tools()
 
 # Tool-calling prompt
 # prompt = ChatPromptTemplate.from_messages([
@@ -54,26 +59,38 @@ prompt = ChatPromptTemplate.from_messages([
 agent = create_tool_calling_agent(llm=llm, tools=tools, prompt=prompt)
 executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
+# Initialise plugins
+setup_plugins()
+
 # TTS setup
-def speak_text(text: str):
-    try:
-        engine = pyttsx3.init()
-        for voice in engine.getProperty('voices'):
-            if "jamie" in voice.name.lower():
-                engine.setProperty('voice', voice.id)
-                break
-        engine.setProperty('rate', 180)
-        engine.setProperty('volume', 1.0)
-        engine.say(text)
-        engine.runAndWait()
-        time.sleep(0.3)
-    except Exception as e:
-        logging.error(f"TTS failed: {e}")
+def speak_text(text: str, hud: RingHUD) -> None:
+    """Speak text asynchronously while showing HUD animation."""
+
+    def _run() -> None:
+        try:
+            hud.start_animation()
+            engine = pyttsx3.init()
+            for voice in engine.getProperty('voices'):
+                name = voice.name.lower()
+                if "brittany" in name or "en-gb" in voice.id.lower():
+                    engine.setProperty('voice', voice.id)
+                    break
+            engine.setProperty('rate', 180)
+            engine.setProperty('volume', 1.0)
+            engine.say(text)
+            engine.runAndWait()
+        except Exception as e:
+            logging.error(f"TTS failed: {e}")
+        finally:
+            hud.stop_animation()
+
+    threading.Thread(target=_run, daemon=True).start()
 
 # Main interaction loop
-def write():
+def write(hud: RingHUD) -> None:
     conversation_mode = False
     last_interaction_time = None
+    conversation_log = []
 
     try:
         with mic as source:
@@ -85,32 +102,41 @@ def write():
                         audio = recognizer.listen(source, timeout=10)
                         transcript = recognizer.recognize_google(audio, language="it-IT")
                         logging.info(f"Heard: {transcript}")
+                        hud.log(f"Tu: {transcript}")
 
                         if TRIGGER_WORD.lower() in transcript.lower():
                             logging.info(f"Triggered by: {transcript}")
-                            speak_text("Sì, signore?")
+                            hud.log("Jarvis: Sì, signore?")
+                            speak_text("Sì, signore?", hud)
                             conversation_mode = True
                             last_interaction_time = time.time()
                         else:
                             logging.debug("Wake word not detected, continuing...")
                     else:
+                        if time.time() - last_interaction_time > CONVERSATION_TIMEOUT:
+                            logging.info("Timeout: Returning to wake word mode.")
+                            conversation_mode = False
+                            continue
                         logging.info("Listening for next command...")
                         audio = recognizer.listen(source, timeout=10)
-                        command   = recognizer.recognize_google(audio, language="it-IT")
+                        command = recognizer.recognize_google(audio, language="it-IT")
                         logging.info(f"Command: {command}")
+                        hud.log(f"Tu: {command}")
 
                         logging.info("Sending command to agent...")
                         response = executor.invoke({"input": command})
                         content = response["output"]
                         logging.info(f"Agent responded: {content}")
 
-                        print("Jarvis:", content)
-                        speak_text(content)
+                        hud.log(f"Jarvis: {content}")
+                        speak_text(content, hud)
+                        if FEATURE_FLAGS.get("memory"):
+                            memory.store(command, content)
+                        if FEATURE_FLAGS.get("learning_module"):
+                            learning.record("command")
+                        if FEATURE_FLAGS.get("conversation_history"):
+                            conversation_log.append((command, content))
                         last_interaction_time = time.time()
-
-                        if time.time() - last_interaction_time > CONVERSATION_TIMEOUT:
-                            logging.info("Timeout: Returning to wake word mode.")
-                            conversation_mode = False
 
                 except sr.WaitTimeoutError:
                     logging.warning("Timeout waiting for audio.")
@@ -125,6 +151,20 @@ def write():
 
     except Exception as e:
         logging.critical(f"Critical error in main loop: {e}")
+    finally:
+        if FEATURE_FLAGS.get("conversation_history"):
+            try:
+                with open("conversation_export.txt", "w", encoding="utf-8") as f:
+                    for usr, ans in conversation_log:
+                        f.write(f"U: {usr}\nA: {ans}\n")
+            except Exception as e:
+                logging.error(f"Failed to export conversation: {e}")
+
+def _curses_main(stdscr: curses.window) -> None:
+    hud = RingHUD(stdscr)
+    hud.start()
+    write(hud)
+
 
 if __name__ == "__main__":
-    write()
+    curses.wrapper(_curses_main)
