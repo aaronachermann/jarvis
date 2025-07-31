@@ -43,6 +43,7 @@
    - Passes the command to the LLM, which may invoke tools
    - Responds using `pyttsx3` text-to-speech (with optional custom voice)
    - Displays an animated HUD using `curses` while speaking
+
    - Conversation history can be exported to `conversation_export.txt`
 
 4. **Timeout**

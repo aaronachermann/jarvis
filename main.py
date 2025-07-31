@@ -4,6 +4,8 @@ import time
 import pyttsx3
 import threading
 import curses
+
+
 from dotenv import load_dotenv
 import speech_recognition as sr
 from langchain_ollama import ChatOllama
@@ -104,6 +106,9 @@ def write(hud: RingHUD) -> None:
                         logging.info(f"Heard: {transcript}")
                         hud.log(f"Tu: {transcript}")
 
+                        print(f"Tu: {transcript}")
+
+
                         if TRIGGER_WORD.lower() in transcript.lower():
                             logging.info(f"Triggered by: {transcript}")
                             hud.log("Jarvis: Sì, signore?")
@@ -122,6 +127,8 @@ def write(hud: RingHUD) -> None:
                         command = recognizer.recognize_google(audio, language="it-IT")
                         logging.info(f"Command: {command}")
                         hud.log(f"Tu: {command}")
+                        print(f"Tu: {command}")
+
 
                         logging.info("Sending command to agent...")
                         response = executor.invoke({"input": command})
@@ -130,6 +137,8 @@ def write(hud: RingHUD) -> None:
 
                         hud.log(f"Jarvis: {content}")
                         speak_text(content, hud)
+                        print("Jarvis:", content, flush=True)
+                        speak_text(content)
                         if FEATURE_FLAGS.get("memory"):
                             memory.store(command, content)
                         if FEATURE_FLAGS.get("learning_module"):
@@ -164,6 +173,7 @@ def _curses_main(stdscr: curses.window) -> None:
     hud = RingHUD(stdscr)
     hud.start()
     write(hud)
+
 
 
 if __name__ == "__main__":
