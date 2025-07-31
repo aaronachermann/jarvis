@@ -13,7 +13,7 @@ from tools.time import get_time
 
 load_dotenv()
 
-MIC_INDEX = 0
+MIC_INDEX = 2
 TRIGGER_WORD = "jarvis"
 CONVERSATION_TIMEOUT = 30  # seconds of inactivity before exiting conversation mode
 
@@ -83,12 +83,12 @@ def write():
                     if not conversation_mode:
                         logging.info("Listening for wake word...")
                         audio = recognizer.listen(source, timeout=10)
-                        transcript = recognizer.recognize_google(audio)
+                        transcript = recognizer.recognize_google(audio, language="it-IT")
                         logging.info(f"Heard: {transcript}")
 
                         if TRIGGER_WORD.lower() in transcript.lower():
                             logging.info(f"Triggered by: {transcript}")
-                            speak_text("Yes sir?")
+                            speak_text("Sì, signore?")
                             conversation_mode = True
                             last_interaction_time = time.time()
                         else:
@@ -96,7 +96,7 @@ def write():
                     else:
                         logging.info("Listening for next command...")
                         audio = recognizer.listen(source, timeout=10)
-                        command = recognizer.recognize_google(audio)
+                        command   = recognizer.recognize_google(audio, language="it-IT")
                         logging.info(f"Command: {command}")
 
                         logging.info("Sending command to agent...")
