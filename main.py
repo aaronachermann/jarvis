@@ -4,6 +4,11 @@ import pyttsx3
 import threading
 import curses
 from dotenv import load_dotenv
+
+
+from dotenv import load_dotenv
+import speech_recognition as sr
+
 from langchain_ollama import ChatOllama
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
@@ -123,12 +128,14 @@ def chat(stdscr: curses.window, hud: RingHUD) -> None:
         except Exception as e:
             logging.error(f"Failed to export conversation: {e}")
 
+
 def _curses_main(stdscr: curses.window) -> None:
     hud = RingHUD(stdscr)
     hud.start()
     chat(stdscr, hud)
     hud.running = False
     hud.join()
+
 
 
 if __name__ == "__main__":

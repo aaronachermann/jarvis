@@ -2,11 +2,13 @@
 
 **Jarvis** is a conversational AI assistant powered by a local LLM via Ollama. You type commands directly in the terminal and Jarvis responds out loud via TTS. Tools are loaded dynamically and can be switched on or off in `config.py`.
 
+
 ---
 
 ## 🚀 Features
 
 - ⌨️ Command-line interface: type your prompts
+
 - 🧠 Local language model (Llama3.2 via Ollama)
 - 🔧 Tool-calling with LangChain
 - 🛠 Tools are loaded dynamically from the `tools` folder and controlled via `config.py`
@@ -39,6 +41,7 @@
    - The assistant sends the text to the LLM and may invoke tools
    - Responses are spoken using `pyttsx3` while the HUD animates
    - Conversation history is saved to `conversation_export.txt` on exit
+
 
 ---
 
